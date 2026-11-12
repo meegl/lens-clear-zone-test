@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lens Clear Zone Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an optician's bench — glasses viewer on top, grouped controls below, notes and summary at the end */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --fg: #15212b;
+  --muted: #586774;
+  --line: #d3dce2;
+  --accent: #0e6a87;
+  --accent-fg: #ffffff;
+  --fx-blur: #d9480f;
+  --fx-astig: #7b3fbf;
+  --fx-double: #b07d00;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1419; --surface: #162029; --fg: #e5ecf1; --muted: #93a2ae; --line: #2a3843;
+  --accent: #55b6d4; --accent-fg: #06222c; --fx-blur: #ff7a45; --fx-astig: #b48cf0; --fx-double: #e2b33b;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1419; --surface: #162029; --fg: #e5ecf1; --muted: #93a2ae; --line: #2a3843;
+  --accent: #55b6d4; --accent-fg: #06222c; --fx-blur: #ff7a45; --fx-astig: #b48cf0; --fx-double: #e2b33b;
+  color-scheme: dark }
+
+* { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 20px; }
+header { display: grid; gap: 6px; }
+h1 { font-size: clamp(24px, 4vw, 34px); line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 70ch; }
+.label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+.stage { background: #1b1f24; border-radius: var(--r); overflow: hidden; position: relative; }
+#view { display: block; width: 100%; height: auto; touch-action: none; cursor: none; }
+.example-chip { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,.92); color: #15212b;
+  font-size: 12.5px; padding: 5px 10px; border-radius: 999px; display: flex; gap: 8px; align-items: center; }
+.example-chip button { all: unset; cursor: pointer; text-decoration: underline; font-weight: 700; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: flex-end; }
+.group { display: grid; gap: 6px; min-width: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: inherit; font-size: 14px; background: transparent; color: var(--fg); border: 0; padding: 8px 12px; cursor: pointer;
+  display: inline-flex; gap: 7px; align-items: center; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.slider { display: grid; gap: 4px; width: min(220px, 100%); }
+.slider .top { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; }
+.slider output { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.btn { font: inherit; font-size: 14px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
+.btn.danger { color: var(--fx-blur); }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.sep { height: 1px; background: var(--line); }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.notes label { display: grid; gap: 6px; }
+textarea, select { font: inherit; font-size: 14.5px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; width: 100%; }
+textarea { min-height: 92px; resize: vertical; }
+h2 { font-size: 18px; margin: 0; }
+pre#summary { margin: 0; white-space: pre-wrap; font-family: var(--font-mono); font-size: 13px; line-height: 1.6; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 12px; overflow-x: auto; min-width: 0; }
+#exportBox img { width: 100%; border-radius: 8px; border: 1px solid var(--line); }
+.status { font-size: 13px; color: var(--muted); }
+@media (max-width: 560px) { .seg button { padding: 8px 10px; font-size: 13.5px; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <a class="label" href="./" style="text-decoration:none">← Lens clear zone test</a>
+    <h1>Lens clear zone map</h1>
+    <p>This is the view through your glasses. Paint over each lens the areas where you don't see well and choose what kind of problem you notice. The view is from your eyes: the lens on the left is your left eye's.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="view" width="1200" height="540" aria-label="Simulated view through the glasses; paint over the lenses to mark blurry areas"></canvas>
+    <div class="example-chip" id="exampleChip" hidden>Example loaded: blurry side edges. <button id="clearExample">Start from scratch</button></div>
+  </div>
+
+  <section class="panel" aria-label="Tools">
+    <div class="row">
+      <div class="group"><span class="label">Lens</span>
+        <div class="seg" id="segLens">
+          <button data-v="0">OS · left</button><button data-v="1">OD · right</button>
+        </div></div>
+      <div class="group"><span class="label">What you notice</span>
+        <div class="seg" id="segFx">
+          <button data-v="blur"><span class="dot" style="background:var(--fx-blur)"></span>Blurry</button>
+          <button data-v="astig"><span class="dot" style="background:var(--fx-astig)"></span>Stretched / smeared</button>
+          <button data-v="double"><span class="dot" style="background:var(--fx-double)"></span>Double image</button>
+        </div></div>
+      <div class="group"><span class="label">Tool</span>
+        <div class="seg" id="segTool">
+          <button data-v="paint">Paint</button><button data-v="erase">Erase</button>
+        </div></div>
+    </div>
+
+    <div class="row">
+      <label class="slider"><span class="top">Brush size <output id="oSize"></output></span>
+        <input type="range" id="size" min="20" max="220" step="2"></label>
+      <label class="slider"><span class="top">Stroke strength <output id="oInt"></output></span>
+        <input type="range" id="intensity" min="0.1" max="1" step="0.05"></label>
+      <label class="slider"><span class="top"><span id="maxLabel">How blurry</span> <output id="oMax"></output></span>
+        <input type="range" id="maxStr" min="1" max="22" step="0.5"></label>
+      <label class="slider" id="angleWrap"><span class="top">Direction <output id="oAng"></output></span>
+        <input type="range" id="angle" min="0" max="175" step="5"></label>
+    </div>
+    <p class="hint" id="fxHint"></p>
+
+    <div class="row">
+      <div class="group"><span class="label">Shortcuts for this lens and effect</span>
+        <div class="row" style="gap:8px">
+          <button class="btn" id="edgeL">Fill left edge</button>
+          <button class="btn" id="edgeR">Fill right edge</button>
+          <button class="btn" id="edgeB">Fill lower part</button>
+          <button class="btn danger" id="clearFx">Remove this effect from the lens</button>
+        </div></div>
+    </div>
+    <div class="sep"></div>
+    <div class="row">
+      <div class="group"><span class="label">View</span>
+        <div class="seg" id="segView">
+          <button data-v="real">How I see it</button><button data-v="zones">Show marked areas</button>
+        </div></div>
+      <div class="group"><span class="label">Eyes</span>
+        <div class="seg" id="segShow">
+          <button data-v="both">Both</button><button data-v="0">Cover OD</button><button data-v="1">Cover OS</button>
+        </div></div>
+      <div class="group"><span class="label">Clear zone</span>
+        <div class="seg" id="segGuides"><button data-v="on">Lines on</button><button data-v="off">Lines off</button></div></div>
+      <button class="btn" id="guidesSync">Copy lines to the other lens (mirrored)</button>
+      <button class="btn danger" id="resetAll">Start from scratch</button>
+    </div>
+    <p class="hint">Drag the two green lines on each lens to mark the band where you see well. No effect is applied between them, even if you paint over it. "Fill edge" paints from the edge of the lens up to the line.</p>
+  </section>
+
+  <section class="panel" aria-label="Notes">
+    <h2>Notes for the optician</h2>
+    <div class="notes">
+      <label><span class="label">Lens type</span>
+        <select id="lensType">
+          <option>Occupational / computer</option><option>Progressive (multifocal)</option><option>Single vision, distance</option><option>Single vision, near / reading</option><option>Bifocal</option><option>Not sure</option>
+        </select></label>
+      <label><span class="label">Lens width (mm)</span>
+        <input id="calibre" type="number" min="30" max="80" step="1" style="font:inherit;font-size:14.5px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%">
+        <span class="hint">It is the first number of the size printed on the temple (for example 52□18 → 52).</span></label>
+      <label><span class="label">When I notice it most</span>
+        <textarea id="noteGeneral" placeholder="E.g. glancing sideways at the screen, turning my head, reading my phone…"></textarea></label>
+      <label><span class="label">OS · left eye</span>
+        <textarea id="note0" placeholder="E.g. the outer edge is blurry and letters seem to smear"></textarea></label>
+      <label><span class="label">OD · right eye</span>
+        <textarea id="note1" placeholder="E.g. blurry on both sides, worse at the lower right"></textarea></label>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Summary">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2>Summary for the optician</h2>
+      <div class="row" style="gap:8px">
+        <button class="btn" id="copy">Copy text</button>
+        <button class="btn primary" id="makeImg">Create image</button>
+      </div>
+    </div>
+    <pre id="summary"></pre>
+    <span class="status" id="status"></span>
+    <div id="exportBox" hidden>
+      <p class="hint">Long-press the image (phone) or right-click → "Save image" (computer) to save or send it.</p>
+      <img id="exportImg" alt="Image with the simulation, the marked areas and the summary">
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+const W = 1200, H = 540;
+const FX = ['blur', 'astig', 'double'];
+const FXNAME = { blur: 'Blurry', astig: 'Stretched / smeared', double: 'Double image' };
+const FXCOLOR = { blur: '#e8590c', astig: '#8a4fd6', double: '#d4a000' };
+const FXREF = { blur: 8, astig: 10, double: 6 };
+const HINTS = {
+  blur: 'General blur, like when something is out of focus.',
+  astig: 'Letters look smeared or have a "tail" in one direction (typical of the sides of progressive lenses). Set the direction of the smear.',
+  double: 'You see a second, shifted copy (shadow or ghost). Set which way it is shifted.'
+};
+const LENS = [{ cx: 318, cy: 285 }, { cx: 882, cy: 285 }];
+const TW = 432, BW = 396, LH = 330, RAD = 64;
+
+const view = document.getElementById('view');
+const ctx = view.getContext('2d');
+const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
+
+// ---------- state ----------
+const defParams = () => ({ blur: { max: 8, angle: 0 }, astig: { max: 10, angle: 0 }, double: { max: 6, angle: 90 } });
+let S = { lens: 1, fx: 'blur', tool: 'paint', size: 90, intensity: 0.6, view: 'real', show: 'both',
+  params: [defParams(), defParams()], notes: ['', ''], general: '', lensType: 'Not sure', calibre: 52, example: false, guides: [[0.34, 0.66], [0.34, 0.66]], guidesOn: 'on' };
+const masks = [0, 1].map(() => Object.fromEntries(FX.map(f => [f, mk()])));
+const effects = [0, 1].map(() => ({}));
+
+// ---------- geometry ----------
+function lensPath(c, L) {
+  const { cx, cy } = LENS[L];
+  const tl = [cx - TW / 2, cy - LH / 2], tr = [cx + TW / 2, cy - LH / 2], br = [cx + BW / 2, cy + LH / 2], bl = [cx - BW / 2, cy + LH / 2];
+  c.beginPath(); c.moveTo(cx, tl[1]);
+  c.arcTo(tr[0], tr[1], br[0], br[1], RAD); c.arcTo(br[0], br[1], bl[0], bl[1], RAD + 10);
+  c.arcTo(bl[0], bl[1], tl[0], tl[1], RAD + 10); c.arcTo(tl[0], tl[1], tr[0], tr[1], RAD); c.closePath();
+}
+const bbox = L => ({ x0: LENS[L].cx - TW / 2, x1: LENS[L].cx + TW / 2, y0: LENS[L].cy - LH / 2, y1: LENS[L].cy + LH / 2 });
+function lensAt(x, y) { for (const L of [0, 1]) { lensPath(ctx, L); if (ctx.isPointInPath(x, y)) return L; } return null; }
+
+// ---------- scene ----------
+const scene = mk();
+(function drawScene() {
+  const c = scene.getContext('2d');
+  c.fillStyle = '#fbfbf9'; c.fillRect(0, 0, W, H);
+  c.strokeStyle = '#e2e6ea'; c.lineWidth = 1;
+  for (let x = 0; x <= W; x += 40) { c.beginPath(); c.moveTo(x + .5, 0); c.lineTo(x + .5, H); c.stroke(); }
+  for (let y = 0; y <= H; y += 40) { c.beginPath(); c.moveTo(0, y + .5); c.lineTo(W, y + .5); c.stroke(); }
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const letters = 'CDEFHKNOPRTUVZ';
+  const sentence = 'Vision should be sharp from one side of the lens to the other without having to turn your head. ';
+  const rows = [[72, 46], [132, 38], [186, 30], [234, 25], [278, 21], [316, 18], [352, 16], [386, 14], [416, 13], [444, 12], [470, 11], [495, 10], [518, 9]];
+  c.fillStyle = '#111'; c.textBaseline = 'alphabetic';
+  rows.forEach(([y, s], i) => {
+    if (s >= 18) {
+      c.font = `700 ${s}px Arial, Helvetica, sans-serif`;
+      let x = 20; while (x < W) { const ch = letters[Math.floor(rnd() * letters.length)]; c.fillText(ch, x, y); x += s * 1.55; }
+    } else {
+      c.font = `${s}px Georgia, "Times New Roman", serif`;
+      let line = ''; while (c.measureText(line).width < W + 200) line += sentence;
+      c.fillText(line, 20 - (i * 37) % 120, y);
+    }
+  });
+  // astigmatism dials at the centre of each lens
+  LENS.forEach(({ cx, cy }) => {
+    const y = cy - 14;
+    c.fillStyle = '#fbfbf9'; c.beginPath(); c.arc(cx, y, 52, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#111'; c.lineWidth = 1.6;
+    for (let a = 0; a < 180; a += 15) {
+      const r = a * Math.PI / 180;
+      c.beginPath(); c.moveTo(cx - Math.cos(r) * 46, y - Math.sin(r) * 46); c.lineTo(cx + Math.cos(r) * 46, y + Math.sin(r) * 46); c.stroke();
+    }
+  });
+})();
+const sceneOut = mk();
+{ const c = sceneOut.getContext('2d'); c.filter = 'blur(5px)'; c.drawImage(scene, 0, 0); c.filter = 'none'; c.fillStyle = 'rgba(16,20,26,0.45)'; c.fillRect(0, 0, W, H); }
+
+// ---------- effects ----------
+function getEffect(L, f) {
+  if (effects[L][f]) return effects[L][f];
+  const e = mk(), c = e.getContext('2d'); const p = S.params[L][f];
+  const a = p.angle * Math.PI / 180, ux = Math.cos(a), uy = -Math.sin(a);
+  if (f === 'blur') { c.filter = `blur(${p.max}px)`; c.drawImage(scene, 0, 0); }
+  else if (f === 'astig') {
+    const n = 18; c.filter = 'blur(0.6px)';
+    for (let i = 0; i < n; i++) { const t = -1 + 2 * i / (n - 1); c.globalAlpha = 1 / (i + 1); c.drawImage(scene, ux * p.max * t, uy * p.max * t); }
+  } else {
+    c.filter = 'blur(0.7px)'; c.drawImage(scene, 0, 0); c.globalAlpha = 0.5; c.drawImage(scene, ux * p.max * 1.6, uy * p.max * 1.6);
+  }
+  return (effects[L][f] = e);
+}
+
+// ---------- painting ----------
+const stroke = mk(), sctx = stroke.getContext('2d');
+const combo = mk(), cctx = combo.getContext('2d');
+const tmp = mk(), tctx = tmp.getContext('2d');
+let drawing = false, last = null, pointer = null;
+
+function stamp(x, y) {
+  const r = S.size / 2, g = sctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.5, 'rgba(0,0,0,0.85)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  sctx.fillStyle = g; sctx.beginPath(); sctx.arc(x, y, r, 0, Math.PI * 2); sctx.fill();
+}
+function strokeTo(x, y) {
+  if (!last) { stamp(x, y); last = { x, y }; return; }
+  const d = Math.hypot(x - last.x, y - last.y), step = Math.max(2, S.size / 8);
+  for (let t = step; t <= d; t += step) stamp(last.x + (x - last.x) * t / d, last.y + (y - last.y) * t / d);
+  if (d >= step) last = { x, y };
+}
+function maskFor(L, f) {
+  if (!(drawing && L === S.lens && f === S.fx)) return masks[L][f];
+  cctx.globalCompositeOperation = 'source-over'; cctx.globalAlpha = 1; cctx.clearRect(0, 0, W, H); cctx.drawImage(masks[L][f], 0, 0);
+  cctx.globalCompositeOperation = S.tool === 'erase' ? 'destination-out' : 'source-over'; cctx.globalAlpha = S.intensity;
+  cctx.drawImage(stroke, 0, 0); cctx.globalCompositeOperation = 'source-over'; cctx.globalAlpha = 1;
+  return combo;
+}
+function commit() {
+  const m = masks[S.lens][S.fx].getContext('2d');
+  m.globalCompositeOperation = S.tool === 'erase' ? 'destination-out' : 'source-over'; m.globalAlpha = S.intensity;
+  m.drawImage(stroke, 0, 0); m.globalCompositeOperation = 'source-over'; m.globalAlpha = 1;
+  sctx.clearRect(0, 0, W, H);
+}
+function pos(e) { const r = view.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
+const hidden = L => S.show !== 'both' && String(L) !== S.show;
+const FEATHER = 22;
+function guideX(L) { const b = bbox(L), g = S.guides[L]; return [b.x0 + g[0] * TW, b.x0 + g[1] * TW]; }
+function cutBand(c, L) {
+  if (S.guidesOn !== 'on') return;
+  const [a, bx] = guideX(L), bb = bbox(L), w = bx - a + 2 * FEATHER;
+  const g = c.createLinearGradient(a - FEATHER, 0, bx + FEATHER, 0);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(FEATHER / w, 'rgba(0,0,0,1)'); g.addColorStop(1 - FEATHER / w, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.save(); c.globalCompositeOperation = 'destination-out'; c.globalAlpha = 1; c.fillStyle = g; c.fillRect(a - FEATHER, bb.y0 - 30, w, LH + 60); c.restore();
+}
+let dragGuide = null;
+function guideAt(x, y) {
+  if (S.guidesOn !== 'on') return null;
+  const r = view.getBoundingClientRect(), tol = 16 * W / r.width;
+  for (const L of [0, 1]) {
+    if (hidden(L)) continue; const b = bbox(L); if (y < b.y0 - 10 || y > b.y1 + 10) continue;
+    const gx = guideX(L); for (const i of [0, 1]) if (Math.abs(x - gx[i]) < tol) return { L, i };
+  }
+  return null;
+}
+
+view.addEventListener('pointerdown', e => {
+  const p = pos(e);
+  const hg = guideAt(p.x, p.y);
+  if (hg) { dragGuide = hg; if (hg.L !== S.lens) { S.lens = hg.L; syncUI(); } view.setPointerCapture(e.pointerId); e.preventDefault(); return; }
+  const L = lensAt(p.x, p.y);
+  if (L === null || hidden(L)) return;
+  if (L !== S.lens) { S.lens = L; syncUI(); }
+  drawing = true; last = null; sctx.clearRect(0, 0, W, H); view.setPointerCapture(e.pointerId);
+  strokeTo(p.x, p.y); pointer = p; schedule(); e.preventDefault();
+});
+view.addEventListener('pointermove', e => {
+  pointer = pos(e);
+  if (dragGuide) {
+    const { L, i } = dragGuide, b = bbox(L), g = S.guides[L]; let f = (pointer.x - b.x0) / TW;
+    f = i === 0 ? Math.max(0.03, Math.min(f, g[1] - 0.06)) : Math.min(0.97, Math.max(f, g[0] + 0.06)); g[i] = f; updateSummary();
+  } else if (drawing) strokeTo(pointer.x, pointer.y);
+  view.style.cursor = (dragGuide || (!drawing && guideAt(pointer.x, pointer.y))) ? 'ew-resize' : 'none';
+  schedule();
+});
+const end = () => { if (dragGuide) { dragGuide = null; save(); schedule(); return; } if (!drawing) return; drawing = false; commit(); markEdited(); schedule(); };
+view.addEventListener('pointerup', end); view.addEventListener('pointercancel', end);
+view.addEventListener('pointerleave', () => { if (!drawing) { pointer = null; schedule(); } });
+
+function edgeFill(L, f, side, a) {
+  const m = masks[L][f].getContext('2d'), b = bbox(L), on = S.guidesOn === 'on' && side !== 'B', gx = guideX(L);
+  let g, rx0 = b.x0 - 20, rw = TW + 40;
+  if (side === 'L') { const e = on ? gx[0] : b.x0 + TW * 0.4; g = m.createLinearGradient(b.x0, 0, e, 0); if (on) rw = e - rx0 + 4; }
+  else if (side === 'R') { const e = on ? gx[1] : b.x1 - TW * 0.4; g = m.createLinearGradient(b.x1, 0, e, 0); if (on) { rx0 = e - 4; rw = b.x1 + 20 - rx0; } }
+  else g = m.createLinearGradient(0, b.y1, 0, b.y1 - LH * 0.45);
+  g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(0.35, `rgba(0,0,0,${a * 0.8})`); g.addColorStop(1, on ? `rgba(0,0,0,${a * 0.5})` : 'rgba(0,0,0,0)');
+  m.fillStyle = g; m.fillRect(rx0, b.y0 - 20, rw, LH + 40);
+}
+
+// ---------- render ----------
+function drawFrame(c) {
+  c.save(); c.lineJoin = 'round'; c.lineCap = 'round';
+  const frame = 'rgba(24,26,30,0.94)';
+  // temples
+  [[0, 101, 30], [W - 101, W, 30]].forEach(([x0, x1]) => {
+    c.strokeStyle = frame; c.lineWidth = 22; c.beginPath(); c.moveTo(x0, 132); c.lineTo(x1, 132); c.stroke();
+  });
+  [101, W - 101].forEach(x => { c.fillStyle = '#9aa3ab'; c.fillRect(x - 10, 124, 20, 16); c.fillStyle = '#5d656d'; c.beginPath(); c.arc(x, 132, 3.5, 0, 7); c.fill(); });
+  // bridge
+  c.strokeStyle = frame; c.lineWidth = 24; c.beginPath(); c.moveTo(522, 140); c.quadraticCurveTo(600, 104, 678, 140); c.stroke();
+  c.lineWidth = 10; c.beginPath(); c.moveTo(532, 178); c.quadraticCurveTo(600, 146, 668, 178); c.stroke();
+  for (const L of [0, 1]) {
+    lensPath(c, L); c.strokeStyle = frame; c.lineWidth = 32; c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.16)'; c.lineWidth = 1.5; c.stroke();
+  }
+  c.restore();
+}
+function render(c, opt) {
+  const v = opt.view, show = opt.show;
+  c.clearRect(0, 0, W, H); c.drawImage(sceneOut, 0, 0);
+  for (const L of [0, 1]) {
+    c.save(); lensPath(c, L); c.clip();
+    if (show !== 'both' && String(L) !== show) {
+      c.fillStyle = '#1f2329'; c.fillRect(0, 0, W, H);
+      c.fillStyle = '#8b949c'; c.font = '700 22px Atkinson Hyperlegible, Arial'; c.textAlign = 'center';
+      c.fillText('Covered', LENS[L].cx, LENS[L].cy + 8); c.restore(); continue;
+    }
+    c.drawImage(scene, 0, 0);
+    if (v === 'real') {
+      for (const f of FX) {
+        tctx.globalCompositeOperation = 'source-over'; tctx.clearRect(0, 0, W, H); tctx.drawImage(getEffect(L, f), 0, 0);
+        tctx.globalCompositeOperation = 'destination-in'; tctx.drawImage(maskFor(L, f), 0, 0); tctx.globalCompositeOperation = 'source-over'; cutBand(tctx, L);
+        c.drawImage(tmp, 0, 0);
+      }
+    } else {
+      c.fillStyle = 'rgba(255,255,255,0.55)'; c.fillRect(0, 0, W, H);
+      for (const f of FX) {
+        tctx.globalCompositeOperation = 'source-over'; tctx.clearRect(0, 0, W, H); tctx.fillStyle = FXCOLOR[f]; tctx.fillRect(0, 0, W, H);
+        tctx.globalCompositeOperation = 'destination-in'; tctx.drawImage(maskFor(L, f), 0, 0); tctx.globalCompositeOperation = 'source-over'; cutBand(tctx, L);
+        c.globalAlpha = 0.72; c.drawImage(tmp, 0, 0); c.globalAlpha = 1;
+      }
+    }
+    // subtle lens reflection
+    const g = c.createLinearGradient(LENS[L].cx - TW / 2, LENS[L].cy - LH / 2, LENS[L].cx + TW / 2, LENS[L].cy + LH / 2);
+    g.addColorStop(0, 'rgba(120,170,200,0.10)'); g.addColorStop(1, 'rgba(120,170,200,0.02)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.restore();
+  }
+  if (S.guidesOn === 'on') for (const L of [0, 1]) {
+    if (show !== 'both' && String(L) !== show) continue;
+    const [a, bx] = guideX(L), b = bbox(L);
+    c.save(); lensPath(c, L); c.clip();
+    if (v === 'zones') { c.fillStyle = 'rgba(16,160,110,0.14)'; c.fillRect(a, b.y0, bx - a, LH); }
+    c.strokeStyle = '#10a06e'; c.lineWidth = 3; c.setLineDash([10, 7]);
+    [a, bx].forEach(x => { c.beginPath(); c.moveTo(x, b.y0); c.lineTo(x, b.y1); c.stroke(); });
+    c.setLineDash([]);
+    c.fillStyle = 'rgba(255,255,255,0.9)'; c.fillRect((a + bx) / 2 - 48, b.y0 + 20, 96, 22);
+    c.font = '700 13px Atkinson Hyperlegible, Arial'; c.textAlign = 'center'; c.fillStyle = '#0b7a54';
+    c.fillText('clear zone', (a + bx) / 2, b.y0 + 36);
+    c.restore();
+    [a, bx].forEach(x => { c.fillStyle = '#10a06e'; c.beginPath(); c.arc(x, b.y1 - 34, 10, 0, 7); c.fill(); c.strokeStyle = '#ffffff'; c.lineWidth = 2; c.stroke();
+      c.fillStyle = '#ffffff'; c.font = '700 12px Arial'; c.fillText('↔', x, b.y1 - 30); });
+  }
+  drawFrame(c);
+  // labels
+  c.font = '700 17px Atkinson Hyperlegible, Arial'; c.textAlign = 'center';
+  [['OS · left eye', 0], ['OD · right eye', 1]].forEach(([t, L]) => {
+    const sel = opt.cursor && L === S.lens;
+    c.fillStyle = sel ? '#ffffff' : 'rgba(255,255,255,0.7)'; c.fillText(t, LENS[L].cx, LENS[L].cy + LH / 2 + 38);
+    if (sel) { c.fillStyle = '#55b6d4'; c.fillRect(LENS[L].cx - 70, LENS[L].cy + LH / 2 + 46, 140, 3); }
+  });
+  c.font = '13px IBM Plex Mono, monospace'; c.fillStyle = 'rgba(255,255,255,0.55)';
+  c.fillText('temporal side ←', 70, 300); c.fillText('→ nasal side', 600, 300); c.fillText('→ temporal side', W - 70, 300);
+  if (opt.cursor && pointer && !dragGuide && !guideAt(pointer.x, pointer.y)) {
+    c.strokeStyle = S.tool === 'erase' ? '#ffffff' : FXCOLOR[S.fx]; c.lineWidth = 2; c.setLineDash(S.tool === 'erase' ? [6, 5] : []);
+    c.beginPath(); c.arc(pointer.x, pointer.y, S.size / 2, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = 'rgba(0,0,0,0.5)'; c.lineWidth = 1; c.setLineDash([]); c.beginPath(); c.arc(pointer.x, pointer.y, S.size / 2 + 1.5, 0, Math.PI * 2); c.stroke();
+  }
+}
+let raf = 0;
+function schedule() { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; render(ctx, { view: S.view, show: S.show, cursor: true }); }); }
+
+// ---------- analysis / summary ----------
+const inside = [0, 1].map(L => { const c = mk(), x = c.getContext('2d'); lensPath(x, L); x.fill(); return x.getImageData(0, 0, W, H).data; });
+function analyze(L, f) {
+  tctx.globalCompositeOperation = 'source-over'; tctx.clearRect(0, 0, W, H); tctx.drawImage(masks[L][f], 0, 0); cutBand(tctx, L);
+  const d = tctx.getImageData(0, 0, W, H).data, b = bbox(L);
+  const sum = Array(9).fill(0), cnt = Array(9).fill(0);
+  for (let y = b.y0; y < b.y1; y += 4) for (let x = b.x0; x < b.x1; x += 4) {
+    const i = (y * W + x) * 4 + 3; if (!inside[L][i]) continue;
+    const r = Math.min(2, Math.floor((y - b.y0) / (LH / 3))), col = Math.min(2, Math.floor((x - b.x0) / (TW / 3)));
+    sum[r * 3 + col] += d[i] / 255; cnt[r * 3 + col]++;
+  }
+  const k = Math.min(1.6, S.params[L][f].max / FXREF[f]);
+  return sum.map((s, i) => ({ r: Math.floor(i / 3), c: i % 3, w: cnt[i] ? s / cnt[i] * k : 0 }));
+}
+function zoneName(L, r, c) {
+  const side = c === 0 ? (L === 0 ? 'left (temporal)' : 'left (nasal)') : (L === 0 ? 'right (nasal)' : 'right (temporal)');
+  const alt = ['upper part', 'middle height', 'lower part'][r];
+  if (c === 1) return r === 1 ? 'centre' : (r === 0 ? 'upper centre' : 'lower centre');
+  return `${side} side, ${alt}`;
+}
+const level = w => w < 0.35 ? 'mild' : w < 0.7 ? 'moderate' : 'strong';
+function buildSummary() {
+  const out = [`Glasses: ${S.lensType}.`, 'Described from the wearer\'s eyes (left/right as they look).', ''];
+  for (const L of [0, 1]) {
+    out.push(L === 0 ? 'OS — left eye' : 'OD — right eye');
+    if (S.guidesOn === 'on') {
+      const g = S.guides[L], wmm = (g[1] - g[0]) * S.calibre, off = ((g[0] + g[1]) / 2 - 0.5) * S.calibre;
+      const dir = Math.abs(off) < 1 ? 'centred' : `shifted ~${Math.abs(off).toFixed(0)} mm towards the ${(off > 0) === (L === 0) ? 'nasal' : 'temporal'} side`;
+      out.push(`  • Clear zone (between the lines): ~${wmm.toFixed(0)} mm wide on a ${S.calibre} mm lens, ${dir} (approx.)`);
+    }
+    let any = false;
+    for (const f of FX) {
+      const z = analyze(L, f).filter(z => z.w >= 0.12).sort((a, b) => b.w - a.w);
+      if (!z.length) continue; any = true;
+      let extra = '';
+      if (f !== 'blur') extra = ` [direction ${S.params[L][f].angle}°: ${dirWord(S.params[L][f].angle)}]`;
+      out.push(`  • ${FXNAME[f]}${extra}:`);
+      z.forEach(q => out.push(`      - ${zoneName(L, q.r, q.c)}: ${level(q.w)}`));
+    }
+    if (!any) out.push('  • No marked areas: looks fine.');
+    if (S.notes[L].trim()) out.push(`  • Notes: ${S.notes[L].trim()}`);
+    out.push('');
+  }
+  if (S.general.trim()) out.push(`When I notice it most: ${S.general.trim()}`);
+  return out.join('\n').trim();
+}
+function dirWord(a) { a = a % 180; if (a < 23 || a >= 158) return 'horizontal'; if (a < 68) return 'diagonal ↗'; if (a < 113) return 'vertical'; return 'diagonal ↖'; }
+const summaryEl = document.getElementById('summary');
+let sumT = 0;
+function updateSummary() { clearTimeout(sumT); sumT = setTimeout(() => { summaryEl.textContent = buildSummary(); }, 120); }
+
+// ---------- UI ----------
+const $ = id => document.getElementById(id);
+function seg(id, key, cb) {
+  $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+    let v = b.dataset.v; if (key === 'lens') v = +v; S[key] = v; if (cb) cb(); syncUI(); schedule(); save(); });
+}
+seg('segLens', 'lens'); seg('segFx', 'fx'); seg('segTool', 'tool'); seg('segView', 'view'); seg('segShow', 'show'); seg('segGuides', 'guidesOn', updateSummary);
+function syncUI() {
+  const pairs = { segLens: S.lens, segFx: S.fx, segTool: S.tool, segView: S.view, segShow: S.show, segGuides: S.guidesOn };
+  for (const [id, v] of Object.entries(pairs)) $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v))));
+  $('size').value = S.size; $('oSize').textContent = S.size + ' px';
+  $('intensity').value = S.intensity; $('oInt').textContent = Math.round(S.intensity * 100) + ' %';
+  const p = S.params[S.lens][S.fx];
+  $('maxStr').value = p.max; $('oMax').textContent = p.max + ' px';
+  $('maxLabel').textContent = { blur: 'How blurry', astig: 'How much smear', double: 'Copy offset' }[S.fx];
+  $('angle').value = p.angle; $('oAng').textContent = `${p.angle}° · ${dirWord(p.angle)}`;
+  $('angleWrap').hidden = S.fx === 'blur';
+  $('fxHint').textContent = `${HINTS[S.fx]} Settings for the ${S.lens === 0 ? 'OS (left)' : 'OD (right)'} lens.`;
+  $('exampleChip').hidden = !S.example;
+}
+$('size').addEventListener('input', e => { S.size = +e.target.value; syncUI(); schedule(); save(); });
+$('intensity').addEventListener('input', e => { S.intensity = +e.target.value; syncUI(); save(); });
+$('maxStr').addEventListener('input', e => { S.params[S.lens][S.fx].max = +e.target.value; effects[S.lens][S.fx] = null; syncUI(); schedule(); updateSummary(); save(); });
+$('angle').addEventListener('input', e => { S.params[S.lens][S.fx].angle = +e.target.value; effects[S.lens][S.fx] = null; syncUI(); schedule(); updateSummary(); save(); });
+$('edgeL').onclick = () => { edgeFill(S.lens, S.fx, 'L', S.intensity); markEdited(); };
+$('edgeR').onclick = () => { edgeFill(S.lens, S.fx, 'R', S.intensity); markEdited(); };
+$('edgeB').onclick = () => { edgeFill(S.lens, S.fx, 'B', S.intensity); markEdited(); };
+$('clearFx').onclick = () => { masks[S.lens][S.fx].getContext('2d').clearRect(0, 0, W, H); markEdited(); };
+function clearAll() { for (const L of [0, 1]) for (const f of FX) masks[L][f].getContext('2d').clearRect(0, 0, W, H); S.example = false; syncUI(); markEdited(); }
+$('guidesSync').onclick = () => { const g = S.guides[S.lens]; S.guides[1 - S.lens] = [1 - g[1], 1 - g[0]]; schedule(); updateSummary(); save(); };
+$('resetAll').onclick = clearAll; $('clearExample').onclick = clearAll;
+['note0', 'note1'].forEach((id, L) => $(id).addEventListener('input', e => { S.notes[L] = e.target.value; updateSummary(); save(); }));
+$('noteGeneral').addEventListener('input', e => { S.general = e.target.value; updateSummary(); save(); });
+$('lensType').addEventListener('change', e => { S.lensType = e.target.value; updateSummary(); save(); });
+$('calibre').addEventListener('input', e => { const v = +e.target.value; if (v >= 30 && v <= 80) { S.calibre = v; updateSummary(); save(); } });
+function markEdited() { S.example = false; $('exampleChip').hidden = true; schedule(); updateSummary(); save(); }
+
+$('copy').onclick = () => {
+  const t = buildSummary();
+  const ok = () => { $('status').textContent = 'Text copied.'; };
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents(summaryEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('status').textContent = 'Text selected: copy it with Ctrl/Cmd+C.'; };
+  try { navigator.clipboard.writeText(t).then(ok, fallback); } catch (e) { fallback(); }
+};
+$('makeImg').onclick = () => {
+  const text = buildSummary().split('\n');
+  const pad = 40, lineH = 26, half = 0.5;
+  const ex = document.createElement('canvas'); ex.width = W + pad * 2;
+  ex.height = pad + 40 + H + 24 + H * half + pad + text.length * lineH + pad;
+  const c = ex.getContext('2d');
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, ex.width, ex.height);
+  c.fillStyle = '#15212b'; c.font = '700 28px Atkinson Hyperlegible, Arial'; c.fillText('How I see with my glasses', pad, pad + 20);
+  const tmpV = mk(), tv = tmpV.getContext('2d');
+  render(tv, { view: 'real', show: 'both', cursor: false }); c.drawImage(tmpV, pad, pad + 40);
+  const y2 = pad + 40 + H + 24;
+  render(tv, { view: 'zones', show: 'both', cursor: false }); c.drawImage(tmpV, pad, y2, W * half, H * half);
+  c.font = '700 18px Atkinson Hyperlegible, Arial'; c.fillStyle = '#15212b'; c.fillText('Marked areas', pad + W * half + 30, y2 + 30);
+  c.font = '16px Atkinson Hyperlegible, Arial';
+  FX.forEach((f, i) => { c.fillStyle = FXCOLOR[f]; c.fillRect(pad + W * half + 30, y2 + 52 + i * 32, 18, 18); c.fillStyle = '#15212b'; c.fillText(FXNAME[f], pad + W * half + 58, y2 + 66 + i * 32); });
+  c.font = '17px IBM Plex Mono, monospace'; c.fillStyle = '#15212b';
+  text.forEach((l, i) => c.fillText(l, pad, y2 + H * half + pad + 10 + i * lineH));
+  $('exportImg').src = ex.toDataURL('image/png'); $('exportBox').hidden = false;
+  render(ctx, { view: S.view, show: S.show, cursor: true });
+  $('exportBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+// ---------- save in this browser ----------
+const KEY = 'lens-clear-zone:map';
+let saveT = 0;
+function save() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => {
+    try {
+      const m = [0, 1].map(L => Object.fromEntries(FX.map(f => [f, masks[L][f].toDataURL('image/png')])));
+      localStorage.setItem(KEY, JSON.stringify({ S, m }));
+    } catch (e) {}
+  }, 500);
+}
+function loadExample() {
+  for (const L of [0, 1]) { edgeFill(L, 'blur', 'L', 0.75); edgeFill(L, 'blur', 'R', 0.75); }
+  S.example = true;
+}
+async function boot() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  if (data && data.S) {
+    S = Object.assign(S, data.S, { tool: data.S.tool || 'paint' });
+    await Promise.all([0, 1].flatMap(L => FX.map(f => new Promise(res => {
+      const src = data.m && data.m[L] && data.m[L][f]; if (!src) return res();
+      const im = new Image(); im.onload = () => { masks[L][f].getContext('2d').drawImage(im, 0, 0); res(); }; im.onerror = res; im.src = src;
+    }))));
+  } else loadExample();
+  $('note0').value = S.notes[0]; $('note1').value = S.notes[1]; $('noteGeneral').value = S.general; $('lensType').value = S.lensType; $('calibre').value = S.calibre;
+  syncUI(); schedule(); summaryEl.textContent = buildSummary();
+}
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(boot, boot);
+})();
+</script>
+
+</body>
+</html>

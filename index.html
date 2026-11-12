@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lens Clear Zone Test</title>
+<meta name="description" content="Two browser tools to measure where each lens of your glasses is sharp, eye by eye, and explain it to your optician.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single-column landing with the two tests as cards and the steps below */
+:root {
+  --bg: #eef2f4; --surface: #ffffff; --fg: #15212b; --muted: #586774; --line: #d3dce2; --accent: #0e6a87;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) { :root { --bg: #0e1419; --surface: #162029; --fg: #e5ecf1; --muted: #93a2ae; --line: #2a3843; --accent: #55b6d4; color-scheme: dark } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+main { max-width: 760px; margin: 0 auto; padding-block: 40px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 24px; }
+.label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: clamp(30px, 6vw, 42px); line-height: 1.1; margin: 4px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0; }
+p { margin: 0; max-width: 65ch; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+a.card { display: grid; gap: 8px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; color: inherit; text-decoration: none; }
+a.card:hover, a.card:focus-visible { border-color: var(--accent); outline: none; }
+a.card .go { color: var(--accent); font-weight: 700; }
+ol { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 65ch; }
+.note { font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="label">Something to bring to your optician</span>
+    <h1>Lens clear zone test</h1>
+    <p>Two tests you can do in your browser to find out how far you see sharply through each lens of your glasses, eye by eye, and explain it to your optician with numbers.</p>
+  </header>
+
+  <div class="cards">
+    <a class="card" href="field-test.html">
+      <span class="label">Head still, eyes move</span>
+      <h2>Clear field test</h2>
+      <p>Full-screen chart. With one eye covered and your nose pointing at the cross, move only your eye and click where text starts to blur. Gives degrees and the % of the screen you see sharply.</p>
+      <span class="go">Open the test →</span>
+    </a>
+    <a class="card" href="lens-map.html">
+      <span class="label">Eyes fixed, head turns</span>
+      <h2>Lens clear zone map</h2>
+      <p>A drawing of a pair of glasses where you mark, on each lens, the band you see sharply and the areas that look blurry, smeared or doubled. Produces a summary and an image.</p>
+      <span class="go">Open the map →</span>
+    </a>
+  </div>
+
+  <section>
+    <h2>Getting reliable results</h2>
+    <ol>
+      <li>Use the monitor you work with, at your usual distance. Measure the visible width of the screen and the distance from your eyes to its centre.</li>
+      <li>Test each eye separately, covering the other one with your hand.</li>
+      <li>In the field test, keep your head still; in the map, look at a fixed point and turn your head.</li>
+      <li>Repeat each test a couple of times. If the results are similar, they are reliable.</li>
+    </ol>
+  </section>
+
+  <p class="note">Everything stays in your browser; nothing is sent anywhere. These tests describe what you notice; the real measurement is your optician's.</p>
+</main>
+</body>
+</html>

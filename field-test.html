@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clear Field Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-width optometry chart; thin control bar on top, results below. Fixed light theme (it is a test chart). */
+:root {
+  --paper: #ffffff; --ink: #121a21; --muted: #5b6874; --line: #d7dee4; --bar: #f1f4f6;
+  --accent: #0e6a87; --os: #1c64d4; --od: #e0631b;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.bar { background: var(--bar); border-bottom: 1px solid var(--line); padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+.bar h1 { font-size: 17px; margin: 0; }
+.bar h1 a { color: inherit; text-decoration: none; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--paper); }
+.seg button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--ink); padding: 7px 12px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"][data-v="OS"] { background: var(--os); color: #fff; font-weight: 700; }
+.seg button[aria-pressed="true"][data-v="OD"] { background: var(--od); color: #fff; font-weight: 700; }
+.chks { display: inline-flex; gap: 14px; }
+.chk { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; font-weight: 700; cursor: pointer; }
+.chk input { width: 18px; height: 18px; margin: 0; }
+.chk.os { color: var(--os); } .chk.os input { accent-color: var(--os); }
+.chk.od { color: var(--od); } .chk.od input { accent-color: var(--od); }
+label.num { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--muted); }
+label.num input { font: inherit; width: 70px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--paper); font-variant-numeric: tabular-nums; }
+.btn { font: inherit; font-size: 14px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tip { font-size: 13.5px; color: var(--muted); }
+.tip b { color: var(--ink); }
+#chartWrap { position: relative; width: 100%; height: 82vh; min-height: 360px; }
+#chart { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: manipulation; }
+body.clean .bar { display: none; }
+body.clean #chartWrap { height: 100vh; }
+.results { padding-block: 22px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 14px; max-width: 1100px; margin: 0 auto; }
+.results h2 { font-size: 19px; margin: 0; }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; max-width: 75ch; }
+pre#out { margin: 0; white-space: pre-wrap; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; background: var(--bar); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; overflow-x: auto; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.status { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="bar" id="bar">
+  <h1><a href="./">Clear field test</a></h1>
+  <div class="seg" id="segEye" aria-label="Eye being tested">
+    <button data-v="OS">Testing left eye (OS) · cover the right</button><button data-v="OD">Testing right eye (OD) · cover the left</button>
+  </div>
+  <div class="chks" aria-label="Visible marks">
+    <label class="chk os"><input type="checkbox" id="visOS"> OS marks</label>
+    <label class="chk od"><input type="checkbox" id="visOD"> OD marks</label>
+  </div>
+  <label class="num">Visible screen width <input id="scr" type="number" min="20" max="200" step="0.5"> cm</label>
+  <label class="num">Eye–screen distance <input id="dist" type="number" min="20" max="200" step="1"> cm</label>
+  <button class="btn" id="clearEye">Clear this eye's marks</button>
+  <button class="btn primary" id="full">Full screen</button>
+  <span class="tip">Click where it <b>starts to look blurry</b>, on each side. <b>H</b>: hide/show this bar. <b>1</b>/<b>2</b>: switch eye.</span>
+</div>
+
+<div id="chartWrap"><canvas id="chart" aria-label="Test chart: letters and gratings across the whole screen with a central fixation cross"></canvas></div>
+
+<section class="results">
+  <h2>How to take the test</h2>
+  <ol class="steps">
+    <li>Put this page in <b>full screen</b> on the monitor you work with. With a tape measure, measure the width of the image (without the bezel) and the distance from your eyes to the centre, and enter both above. The grey bar at the bottom left should measure 10 cm; if it doesn't, correct the width.</li>
+    <li>Sit in your usual posture with your <b>nose pointing at the red cross</b>. Your head does not move during the whole test.</li>
+    <li>Choose <b>OS</b> and cover your right eye. Move only your eye to the left along a row of letters and click where they start to blur. Then do the same to the right.</li>
+    <li>Switch to <b>OD</b>, cover your left eye and repeat.</li>
+    <li>Also watch the gratings: if the <b>vertical stripes</b> blur before the horizontal ones (or the other way round), the image is being smeared in one direction.</li>
+  </ol>
+  <h2>Result</h2>
+  <pre id="out"></pre>
+  <div class="row"><button class="btn primary" id="copy">Copy result</button><span class="status" id="status"></span></div>
+  <p class="tip">Degrees are calculated from the distance and width you enter, for a flat screen; on a curved one they are approximate. Millimetres on the lens are an estimate (about 27 mm between the eye's centre of rotation and the lens) to give the optician an idea; the real measurement is theirs. Your marks are stored only in this browser.</p>
+</section>
+
+<script>
+(() => {
+const KEY = 'glasses-test:field';
+let S = { eye: 'OS', vis: { OS: true, OD: true }, scr: 80, dist: 66, marks: { OS: { L: null, R: null }, OD: { L: null, R: null } } };
+try { const d = JSON.parse(localStorage.getItem(KEY) || 'null'); if (d) S = Object.assign(S, d); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+const $ = id => document.getElementById(id);
+const cv = $('chart'), ctx = cv.getContext('2d');
+const COL = { OS: '#1c64d4', OD: '#e0631b' };
+let Wc = 0, Hc = 0, hover = null;
+
+function resize() {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  Wc = r.width; Hc = r.height; cv.width = Math.round(Wc * dpr); cv.height = Math.round(Hc * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); draw();
+}
+const ppc = () => Wc / S.scr;                     // pixels per cm
+const deg = cm => Math.atan(Math.abs(cm) / S.dist) * 180 / Math.PI;
+
+let seed; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const LET = 'CDEFHKNOPRTUVZ';
+const SENT = 'the eye moves while the head stays still and the reading should stay sharp all the way to the edge ';
+
+function lettersRow(y, size, s) {
+  seed = s; ctx.font = `700 ${size}px Arial, Helvetica, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#121a21';
+  const step = size * 1.5, cx = Wc / 2;
+  for (let k = 0; cx + k * step < Wc + step; k++) for (const sgn of k ? [1, -1] : [1]) {
+    const x = cx + sgn * k * step; if (k === 0 && size > 20) continue;
+    ctx.fillText(LET[Math.floor(rnd() * LET.length)], x, y);
+  }
+}
+function textRow(y, size) {
+  ctx.font = `${size}px Georgia, "Times New Roman", serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#121a21';
+  let t = ''; while (ctx.measureText(t).width < Wc + 50) t += SENT; ctx.fillText(t, 0, y);
+}
+function grating(y, h, vertical) {
+  ctx.fillStyle = '#121a21';
+  if (vertical) for (let x = 0; x < Wc; x += 4) ctx.fillRect(x, y - h / 2, 2, h);
+  else for (let yy = y - h / 2; yy < y + h / 2; yy += 4) ctx.fillRect(0, yy, Wc, 2);
+}
+
+function draw() {
+  const cx = Wc / 2, p = ppc();
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, Wc, Hc);
+  // guides every 5 cm
+  for (let k = 5; k * p < cx + p; k += 5) [cx - k * p, cx + k * p].forEach(x => { ctx.fillStyle = k % 10 ? '#eef1f4' : '#e1e6eb'; ctx.fillRect(Math.round(x), 0, 1, Hc); });
+  // shaded clear zone per eye
+  for (const e of ['OS', 'OD']) {
+    const m = S.marks[e]; if (!S.vis[e] || m.L == null || m.R == null) continue;
+    ctx.fillStyle = e === 'OS' ? 'rgba(28,100,212,0.06)' : 'rgba(224,99,27,0.06)';
+    ctx.fillRect(cx + m.L * p, 0, (m.R - m.L) * p, Hc);
+  }
+  // rows
+  const top = 58, bot = Hc - 70, rows = [
+    ['L', 46], ['L', 32], ['G', 40, true], ['L', 24], ['T', 18], ['G', 40, false], ['L', 18], ['T', 15], ['L', 14], ['T', 13]
+  ];
+  const gap = (bot - top) / rows.length;
+  rows.forEach((r, i) => {
+    const y = top + gap * (i + 0.5);
+    if (r[0] === 'L') lettersRow(y, Math.min(r[1], gap * 0.8), 11 + i * 97);
+    else if (r[0] === 'T') textRow(y, Math.min(r[1], gap * 0.7));
+    else grating(y, Math.min(r[1], gap * 0.7), r[2]);
+  });
+  // top scale in cm
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, Wc, 44);
+  ctx.fillStyle = '#121a21'; ctx.font = '500 12px "IBM Plex Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let k = 0; k * p < cx + p; k++) [cx - k * p, cx + k * p].forEach(x => {
+    const big = k % 5 === 0; ctx.fillRect(Math.round(x), 0, 1, big ? 16 : 7);
+    if (big && k) ctx.fillText(k + ' cm', x, 20);
+  });
+  // bottom scale in degrees
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, Hc - 54, Wc, 54);
+  ctx.fillStyle = '#121a21'; ctx.textBaseline = 'bottom';
+  for (let d = 5; d < 85; d += 5) {
+    const off = S.dist * Math.tan(d * Math.PI / 180) * p; if (off > cx) break;
+    [cx - off, cx + off].forEach(x => { ctx.fillRect(Math.round(x), Hc - 16, 1, 16); ctx.fillText(d + '°', x, Hc - 20); });
+  }
+  // 10 cm calibration bar
+  ctx.fillStyle = '#9aa6b1'; ctx.fillRect(16, Hc - 48, 10 * p, 6);
+  ctx.textAlign = 'left'; ctx.fillStyle = '#5b6874'; ctx.font = '12px "IBM Plex Mono", monospace'; ctx.fillText('this bar = 10 cm', 16, Hc - 30);
+  // temporal / nasal side for the current eye
+  ctx.font = '700 13px "Atkinson Hyperlegible", Arial'; ctx.fillStyle = COL[S.eye]; ctx.textBaseline = 'top';
+  const lSide = S.eye === 'OS' ? '← temporal side (outer)' : '← nasal side (towards the nose)';
+  const rSide = S.eye === 'OS' ? 'nasal side (towards the nose) →' : 'temporal side (outer) →';
+  ctx.textAlign = 'left'; ctx.fillText(`${S.eye}: ${lSide}`, 14, 40); ctx.textAlign = 'right'; ctx.fillText(rSide, Wc - 14, 40);
+  // fixation line and cross
+  ctx.strokeStyle = 'rgba(214,31,58,0.45)'; ctx.lineWidth = 1; ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.moveTo(cx + .5, 44); ctx.lineTo(cx + .5, Hc - 54); ctx.stroke(); ctx.setLineDash([]);
+  const fy = top + gap * 0.5;
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(cx, fy, 26, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#d61f3a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(cx - 18, fy); ctx.lineTo(cx + 18, fy); ctx.moveTo(cx, fy - 18); ctx.lineTo(cx, fy + 18); ctx.stroke();
+  ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, fy, 24, 0, 7); ctx.stroke();
+  // marks
+  for (const e of ['OS', 'OD']) for (const side of ['L', 'R']) {
+    const v = S.marks[e][side]; if (v == null || !S.vis[e]) continue;
+    const x = cx + v * p, cur = e === S.eye;
+    ctx.globalAlpha = cur ? 1 : 0.45; ctx.fillStyle = COL[e]; ctx.fillRect(x - 2, 44, 4, Hc - 98);
+    ctx.font = '700 13px "Atkinson Hyperlegible", Arial'; ctx.textAlign = side === 'L' ? 'right' : 'left'; ctx.textBaseline = 'middle';
+    const lab = `${e} ${Math.abs(v).toFixed(1)} cm · ${deg(v).toFixed(0)}°`;
+    const tw = ctx.measureText(lab).width, lx = side === 'L' ? x - 8 : x + 8, ly = Hc - 66 - (e === 'OD' ? 22 : 0);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(side === 'L' ? lx - tw - 4 : lx - 4, ly - 10, tw + 8, 20);
+    ctx.fillStyle = COL[e]; ctx.fillText(lab, lx, ly); ctx.globalAlpha = 1;
+  }
+  // cursor
+  if (hover != null) {
+    const v = (hover - cx) / p;
+    ctx.strokeStyle = COL[S.eye]; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(hover, 44); ctx.lineTo(hover, Hc - 54); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = '500 12px "IBM Plex Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    const lab = `${Math.abs(v).toFixed(1)} cm · ${deg(v).toFixed(1)}°`, tw = ctx.measureText(lab).width;
+    ctx.fillStyle = COL[S.eye]; ctx.fillRect(hover - tw / 2 - 6, 46, tw + 12, 20); ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(lab, hover, 56);
+  }
+}
+
+cv.addEventListener('mousemove', e => { hover = e.clientX - cv.getBoundingClientRect().left; draw(); });
+cv.addEventListener('mouseleave', () => { hover = null; draw(); });
+cv.addEventListener('click', e => {
+  const x = e.clientX - cv.getBoundingClientRect().left, v = (x - Wc / 2) / ppc();
+  if (Math.abs(v) < 0.2) return;
+  S.marks[S.eye][v < 0 ? 'L' : 'R'] = +v.toFixed(2); save(); draw(); report();
+});
+
+// ---------- result ----------
+const lensMm = d => (27 * Math.tan(d * Math.PI / 180));
+const pct = m => (Math.abs(m.R - m.L) / S.scr * 100);
+function eyeText(e) {
+  const m = S.marks[e], out = [];
+  out.push(e === 'OS' ? 'OS — left eye' : 'OD — right eye');
+  if (m.L == null && m.R == null) { out.push('  (not measured)'); return out; }
+  // With the head still, the eye looks through the side of the lens on the same side as the screen.
+  const sideName = s => (e === 'OS') === (s === 'L') ? 'temporal' : 'nasal';
+  for (const s of ['L', 'R']) if (m[s] != null) {
+    const d = deg(m[s]);
+    out.push(`  • Looking ${s === 'L' ? 'left' : 'right'} (${sideName(s)} part of the lens): clear up to ${Math.abs(m[s]).toFixed(1)} cm from the centre = ${d.toFixed(1)}° (≈${lensMm(d).toFixed(1)} mm on the lens)`);
+  }
+  if (m.L != null && m.R != null) {
+    const dl = deg(m.L), dr = deg(m.R), tot = dl + dr, off = (dr - dl) / 2;
+    out.push(`  • Total clear field: ${tot.toFixed(1)}° (≈${(lensMm(dl) + lensMm(dr)).toFixed(1)} mm wide on the lens), about ${pct(m).toFixed(0)} % of the screen width`);
+    out.push(Math.abs(off) < 1 ? '  • Centred on straight-ahead gaze' :
+      `  • Shifted ${Math.abs(off).toFixed(1)}° towards the ${sideName(off > 0 ? 'R' : 'L')} side`);
+  }
+  return out;
+}
+function report() {
+  const lines = [`Clear field test. Screen: ${S.scr} cm visible width, ${S.dist} cm from the eyes.`,
+    'Head still, looking straight ahead; only the eyes move.', '', ...eyeText('OS'), '', ...eyeText('OD')];
+  const a = S.marks.OS, b = S.marks.OD;
+  if (a.L != null && a.R != null && b.L != null && b.R != null) {
+    const ta = deg(a.L) + deg(a.R), tb = deg(b.L) + deg(b.R);
+    lines.push('', `Difference between eyes: OS ${ta.toFixed(1)}° vs OD ${tb.toFixed(1)}° of clear field.`);
+  }
+  $('out').textContent = lines.join('\n');
+}
+
+// ---------- controls ----------
+function syncUI() {
+  $('segEye').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === S.eye)));
+  $('visOS').checked = S.vis.OS; $('visOD').checked = S.vis.OD;
+  $('scr').value = S.scr; $('dist').value = S.dist;
+}
+const setEye = e => { S.eye = e; syncUI(); save(); draw(); };
+$('segEye').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setEye(b.dataset.v); });
+['OS', 'OD'].forEach(e => $('vis' + e).addEventListener('change', ev => { S.vis[e] = ev.target.checked; save(); draw(); }));
+$('scr').addEventListener('input', e => { const v = +e.target.value; if (v >= 20) { S.scr = v; save(); draw(); report(); } });
+$('dist').addEventListener('input', e => { const v = +e.target.value; if (v >= 20) { S.dist = v; save(); draw(); report(); } });
+$('clearEye').onclick = () => { S.marks[S.eye] = { L: null, R: null }; save(); draw(); report(); };
+$('full').onclick = () => {
+  const el = document.documentElement;
+  try { const r = el.requestFullscreen && el.requestFullscreen(); if (r && r.catch) r.catch(() => { $('status').textContent = 'This browser won\'t go full screen here: press F11 or maximise the window.'; }); } catch (e) {}
+  document.body.classList.add('clean'); setTimeout(resize, 150);
+};
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'h' || e.key === 'H') { document.body.classList.toggle('clean'); setTimeout(resize, 50); }
+  if (e.key === '1') setEye('OS'); if (e.key === '2') setEye('OD');
+});
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.body.classList.remove('clean'); setTimeout(resize, 100); });
+$('copy').onclick = () => {
+  const t = $('out').textContent;
+  const fb = () => { const r = document.createRange(); r.selectNodeContents($('out')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $('status').textContent = 'Text selected: copy it with Ctrl/Cmd+C.'; };
+  try { navigator.clipboard.writeText(t).then(() => { $('status').textContent = 'Result copied.'; }, fb); } catch (e) { fb(); }
+};
+window.addEventListener('resize', resize);
+syncUI(); report();
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(resize, resize);
+resize();
+})();
+</script>
+</body>
+</html>
